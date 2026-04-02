@@ -1,0 +1,16 @@
+cff-version: 1.0.0
+title: "AllIGATR"
+version: 1.0.0
+license: "CC BY"
+type: software
+abstract: "GDGT paleothermometry using all isoprenoid GDGTs"
+message: "If you use this software, please cite it as below."
+authors:
+  - given-names: Addison
+    family-names: Rice
+    affiliation: Utrecht University
+    orcid: "https://orcid.org/0000-0002-4507-6717"
+keywords:
+  - GDGTs
+  - biomarkers
+  - paleothermometry
