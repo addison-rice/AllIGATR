@@ -1,1 +1,21 @@
 
+{
+    "creators": [
+        {
+            "name": "Rice, Addison",
+            "orcid": "0000-0002-4507-6717",
+            "affiliation": "ETH Zurich",
+            "type": "ProjectMember"
+        }
+    ],
+    "title": "AllIGATR",
+    "version": "1.0.0",
+    "access_right": "open",
+    "keywords": [
+        "GDGT",
+        "paleothermometry"
+    ],
+    "license": "CC BY",
+    "upload_type": "software",
+    "language": "eng"
+}
