@@ -1,6 +1,8 @@
 # AllIGATR
 
-AllIGATR stands for ALL Isoprenoid GDGT (glycerol dibiphytanyl glycerol tetraether) Adaptation to Temperature in R, and is a calibration of marine GDGT distributions to temperature for use in paleoclimate applications. This code (specifically, Temp_CalculAllIGAT.R) can be used to calculate proxy SST (sea surface temperature) and TO0TH (depth-integrated Temperatures of 0 to Two Hundred meters). The code used to create temperature adaptation curves based on core top and ancient GDGT data is also provided. For full details on model development and performance, check out the preprinted article (CITATION).
+![AllIGATR-logo](https://github.com/addison-rice/AllIGATR/blob/main/AllIGATR-logo.png)
+
+AllIGATR stands for ALL Isoprenoid GDGT (glycerol dibiphytanyl glycerol tetraether) Adaptation to Temperature in R, and is a calibration of marine GDGT distributions to temperature for use in paleoclimate applications. This code (specifically, Temp_CalculAllIGAT.R) can be used to calculate proxy SST (sea surface temperature) and TO0TH (depth-integrated Temperatures of 0 to Two Hundred meters). The code used to create temperature adaptation curves based on core top and ancient GDGT data is also provided. For full details on model development and performance, check out the preprinted article ([Rice et al., 2026](https://zenodo.org/records/19387271)).
 
 How to use this code
 Downloading the full repository and keeping the folder structure is simplest because the code uses relative file locations.
