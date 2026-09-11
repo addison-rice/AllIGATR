@@ -1,4 +1,4 @@
-### AllIGATR_temps v0.0.1
+### AllIGATR_temps v1.0.0
 ### Addison Rice (github.com/addison-rice)
 ### 2026-01-05
 ###
@@ -13,30 +13,41 @@
 ### with the code, or you can use the commented-out block on lines 66-72
 ### to rename your columns.
 ### 
-### Make sure your input has a column with a unique sample ID!!!!
-### 
 ### Define your input and output file names and file paths at the start, and
 ### the code should run without further issues. It does take some time and will
 ### use quite a bit of memory, so start with a few GDGT data at first to make
 ### sure you won't crash your computer. 
 ###
 ### There will be two output files. One will have the mean AllIGATR model 
-### temperatures (both SST and 0-200m temperatures) for each sample ID. The 
+### temperatures (both SST and 0-200m temperatures) for each line. The 
 ### other contains the temperature given for each of the 150 models. If you 
 ### don't want the full results taking up space on your computer, comment out 
-### line 223.
+### line 235.
 ### 
+### The output files should contain all columns from your original input file,
+### but you may want to double-check that nothing has been altered during the
+### reading and writing process. The summary file will also contain columns for
+### AllIGATR-based temperature uncertainty and whether to accept or reject the
+### AllIGATR-based temperature based on criteria outlined in Rice et al. (2026).
 ### 
 ### Please cite Rice et al. (2026) when using this code in any publication.
 
 
+
+
+### set the working directory if you use relative file paths
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # for Rstudio users
+# setwd(getSrcDirectory(function(){})[1]) 
+# setwd("INSERT FILE PATH")
+
+
 ### make sure file names end in ".csv"
 input_filepath <- "../data/"
-input_filename <- "myGDGTdata.csv"
+input_filename <- "BassRiverGDGTs.csv"
 
 output_filepath <- "../results/"
-output_summary_filename <- "myGDGTdata_AllIGATR_summary.csv"
-output_full_filename <- "myGDGTdata_AllIGATR_fullresults.csv"
+output_summary_filename <- "BassRiver_summary.csv"
+output_full_filename <- "BassRiver_fullresults.csv"
 
 
 ### make sure that these files exist on your computer!
@@ -61,7 +72,10 @@ library(tidyverse)
 
 
 ### load data
-data <- read.csv(str_c(input_filepath, input_filename)) %>%
+fulldata <- read.csv(str_c(input_filepath, input_filename)) %>%
+  mutate(AllIGATR_ID = as.character(row_number()))
+
+data <- fulldata %>%
   ### If needed, edit the myXXname variables to match your input file and uncomment the following lines
   # rename(gdgt0 = mygdgt0name,
   #        gdgt1 = mygdgt1name,
@@ -70,8 +84,7 @@ data <- read.csv(str_c(input_filepath, input_filename)) %>%
   #        cren = mycrenname,
   #        creniso = mycrenisoname,
   #        sampleID = mysampleIDname) %>%
-  select(c("sampleID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso"))
-
+  select(c("AllIGATR_ID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso"))
 
 
 
@@ -117,7 +130,7 @@ expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(.
 temp_match <- function(input_data){
   
   ### recalculate GDGT fractions to ensure no errors
-  calc_data <- select(input_data, c("sampleID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso")) %>%
+  calc_data <- select(input_data, c("AllIGATR_ID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso")) %>%
     mutate(gdgt0 = as.numeric(gdgt0),
            gdgt1 = as.numeric(gdgt1),
            gdgt2 = as.numeric(gdgt2),
@@ -159,37 +172,52 @@ temp_match <- function(input_data){
     
     
     data_match <- data_model %>%
-      mutate(row = str_c(sampleID, "-", model_id)) %>%
+      mutate(row = str_c(AllIGATR_ID, "-", model_id)) %>%
       group_by(row) %>%
       summarise(dist = min(flatweight_dist, na.rm = TRUE),
                 temp = mean(reported_Temp[which.min(temp_dist)], na.rm = TRUE)) %>%
       ungroup() %>%
-      separate_wider_delim(row, "-", names = c("sampleID", "model_id")) %>%
+      separate_wider_delim(row, "-", names = c("AllIGATR_ID", "model_id")) %>%
       mutate(model_depth = case_when(str_detect(model_id, c("sst")) ~ "sst",
-                                     .default = "deep"),
+                                     .default = "to0th"),
              model_num = str_extract(model_id, "(?<=_)[^_]*$"),
              outlier_model = case_when((model_depth == "sst" & model_num %in% hightempmodels$x) | 
-                                       (model_depth == "deep" & model_num %in% hightemptoothmodels$x) ~ 1,
+                                       (model_depth == "to0th" & model_num %in% hightemptoothmodels$x) ~ 1,
                                        TRUE ~ 0)) %>%
       ungroup()
     
-    long_data <- left_join(input_data, data_match, by = "sampleID")
+    long_data <- left_join(input_data, data_match, by = "AllIGATR_ID")
     
     summary_data <- subset(long_data, temp > -5 & temp < 60) %>% ### remove model endpoint matches
-      group_by(across(all_of(c("model_depth", "sampleID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso")))) %>%
+      group_by(across(all_of(c("model_depth", "AllIGATR_ID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso")))) %>%
       summarize(countmodels = n(), 
                 alligatr_Temp_allmodels = mean(temp, na.rm = TRUE),
                 stdevTemp_allmodels = sd(temp, na.rm = TRUE),
                 alligatr_Dist_allmodels = mean(dist, na.rm = TRUE),
                 stdevDist_allmodels = sd(dist, na.rm = TRUE),
+                countmodels_nooutliermodels = sum(outlier_model == 0), 
                 alligatr_Temp_nooutliermodels = mean(temp[which(outlier_model == 0)], na.rm = TRUE),
                 stdevTemp_nooutliermodels = sd(temp[which(outlier_model == 0)], na.rm = TRUE),
                 alligatr_Dist_nooutliermodels = mean(dist[which(outlier_model == 0)], na.rm = TRUE),
                 stdevDist_nooutliermodels = sd(dist[which(outlier_model == 0)], na.rm = TRUE)) %>%
       ungroup() %>%
-      mutate(model_type = modeltype)
+      mutate(model_type = modeltype,
+             Accept_Reject = case_when((gdgt1 + gdgt2 + gdgt3) / (gdgt1 + gdgt2 + gdgt3 + cren + creniso) > 0.3 ~ "Reject - MI", 
+                                       alligatr_Dist_nooutliermodels > 6 ~ "Reject - Distance",
+                                       countmodels_nooutliermodels < 76 ~ "Reject - Few models",
+                                       TRUE ~ "Accept"),
+             AllIGATR_uncertainty = case_when(model_depth == "sst" & alligatr_Temp_nooutliermodels < 30 ~ 4.5,
+                                              model_depth == "sst" & alligatr_Temp_nooutliermodels < 35 ~ 4.5 + (6.3-4.5)*(alligatr_Temp_nooutliermodels - 30)/5,
+                                              model_depth == "sst" & alligatr_Temp_nooutliermodels < 43 ~ 6.3,
+                                              model_depth == "sst" & alligatr_Temp_nooutliermodels < 48 ~ 6.3 + (6.3)*(alligatr_Temp_nooutliermodels - 43)/5,
+                                              model_depth == "sst" & alligatr_Temp_nooutliermodels < 60 ~ 12.6,
+                                              model_depth == "to0th" & alligatr_Temp_nooutliermodels < 25 ~ 3.7,
+                                              model_depth == "to0th" & alligatr_Temp_nooutliermodels < 30 ~ 3.7 + (11.4-3.7)*(alligatr_Temp_nooutliermodels - 25)/5,
+                                              model_depth == "to0th" & alligatr_Temp_nooutliermodels < 43 ~ 11.4,
+                                              model_depth == "to0th" & alligatr_Temp_nooutliermodels < 48 ~ 11.4 + (11.4)*(alligatr_Temp_nooutliermodels - 43)/5,
+                                              model_depth == "to0th" & alligatr_Temp_nooutliermodels < 60 ~ 22.8))
     
-    output_data <- left_join(input_data, summary_data, by = c("sampleID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso"))
+    output_data <- left_join(input_data, summary_data, by = c("AllIGATR_ID", "gdgt0", "gdgt1", "gdgt2", "gdgt3", "cren", "creniso"))
     
     long_data_all <- rbind(long_data_all, long_data)
     output_data_all <- rbind(output_data_all, output_data)
@@ -206,9 +234,15 @@ temp_match <- function(input_data){
 
 all_model_data <- model_GDGTs(all_model_fits)
 
+
 results <- temp_match(data)
 
-write.csv(results[[2]], str_c(output_filepath, output_summary_filename))
-write.csv(results[[1]], str_c(output_filepath, output_full_filename))
+summary_results <- right_join(fulldata, results[[2]], by = "AllIGATR_ID") %>%
+  select(!AllIGATR_ID)
 
+full_results <- left_join(fulldata, results[[1]], by = "AllIGATR_ID") %>%
+  select(!AllIGATR_ID)
+
+write.csv(summary_results, str_c(output_filepath, output_summary_filename))
+write.csv(full_results, str_c(output_filepath, output_full_filename))
 
